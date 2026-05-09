@@ -1,7 +1,18 @@
 # Databricks notebook source
-# ============================================================
-# ML LAYER — Encoding via dense_rank, fara ML cache overhead
-# ============================================================
+# ==============================================================================
+# ML LAYER — Antrenare model Random Forest pentru clasificarea severitatii depresiei
+# ==============================================================================
+# Input:  catalog_licenta.default.gold_nhanes (date cu Depression_Severity)
+# Output: Model RandomForest salvat pe volum + widget interactiv de inferenta
+#
+# Etape:
+#   1. Encoding variabile categorice (string -> numeric via dense_rank)
+#   2. Selectia feature-urilor cu excluderea coloanelor cu potential de data leakage
+#   3. Antrenare Random Forest Classifier (multi-class: 5 nivele de severitate)
+#   4. Evaluare pe set de test (Accuracy, F1, Precision, Recall)
+#   5. Analiza importantei feature-urilor
+#   6. Salvare model pentru reutilizare
+# ==============================================================================
 
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.classification import RandomForestClassifier
@@ -11,14 +22,21 @@ from pyspark.sql.functions import col, dense_rank
 from pyspark.sql.window import Window
 import pandas as pd
 
+# COMMAND ----------
+
 df = spark.table("catalog_licenta.default.gold_nhanes")
 
-# 1. Encoding label Depression_Severity via dense_rank
+# 1. Encoding label: Depression_Severity (string) -> label (numeric)
+# dense_rank ordoneaza alfabetic, deci: Minimala=0, Moderata=1, Moderat_Severa=2, Severa=3, Usoara=4
 severity_order = Window.orderBy("Depression_Severity")
 df_encoded = df.withColumn("label",
     (dense_rank().over(severity_order) - 1).cast("double"))
 
-# 2. Encoding coloane string via dense_rank - zero ML cache
+# COMMAND ----------
+
+# 2. Encoding coloane categorice (string -> numeric)
+# Folosim dense_rank pentru fiecare coloana: valorile se ordoneaza alfabetic
+# si primesc un index numeric (0, 1, 2, ...). Coloana originala se sterge.
 string_cols = [
     "Gender", "RacehispanicOrigin", "MaritalStatus",
     "EducationLevelAdults20", "HowOftenDoYouSnore",
@@ -38,9 +56,19 @@ for c in string_cols:
             (dense_rank().over(w) - 1).cast("double")) \
         .drop(c)
 
-print(f"✅ Encoding complet — {df_encoded.count()} rânduri")
+print(f"Encoding complet — {df_encoded.count()} randuri")
 
-# 3. Feature columns
+# COMMAND ----------
+
+# 3. Selectia feature-urilor
+# EXCLUDEM urmatoarele categorii de coloane pentru a evita data leakage:
+#   - Depression_Severity, Depression_Score, label = derivate direct din target
+#   - Cei 8 itemi PHQ-9 individuali = componentele scorului (ar fi trivial sa prezici
+#     severitatea din propriile sale componente)
+#   - TakeMedicationForDepression, TakeMedicationForTheseFeelings = consecinte
+#     ale diagnosticului, nu cauze
+#   - HowOftenDoYouFeelDepressed, HowOftenDoYouFeelWorriedOrAnxious = masuratori
+#     directe ale starii care defineste target-ul
 exclude = [
     "Depression_Severity", "Depression_Score", "label",
     "FeelingDownDepressedOrHopeless", "HaveLittleInterestInDoingThings",
@@ -53,7 +81,9 @@ exclude = [
 feature_cols = [c for c in df_encoded.columns if c not in exclude]
 print(f"Total features: {len(feature_cols)}")
 
-# 4. Pipeline minimal — doar Assembler + RandomForest
+# COMMAND ----------
+
+# 4. Definire pipeline: VectorAssembler + RandomForestClassifier
 assembler = VectorAssembler(
     inputCols=feature_cols,
     outputCol="features",
@@ -68,16 +98,18 @@ rf = RandomForestClassifier(
 )
 pipeline = Pipeline(stages=[assembler, rf])
 
-# 5. Train/Test split 80/20
+# 5. Split 80% antrenare / 20% testare
 train_df, test_df = df_encoded.randomSplit([0.8, 0.2], seed=42)
 print(f"Train: {train_df.count()} | Test: {test_df.count()}")
 
-# 6. Antrenare
-print("⏳ Training model...")
+# 6. Antrenare model
+print("Training model...")
 model = pipeline.fit(train_df)
-print("✅ Model antrenat!")
+print("Model antrenat!")
 
-# 7. Evaluare
+# COMMAND ----------
+
+# 7. Evaluare pe setul de test
 predictions = model.transform(test_df)
 evaluator = MulticlassClassificationEvaluator(
     labelCol="label",
@@ -94,7 +126,9 @@ print(f"F1 Score:  {f1:.4f}")
 print(f"Precision: {precision:.4f}")
 print(f"Recall:    {recall:.4f}")
 
-# 8. Feature Importance
+# COMMAND ----------
+
+# 8. Importanta feature-urilor — care variabile contribuie cel mai mult la predictie
 rf_model = model.stages[-1]
 feat_imp = pd.DataFrame({
     "Feature":    feature_cols,
@@ -104,10 +138,12 @@ feat_imp = pd.DataFrame({
 print("\n=== Top 10 Features ===")
 print(feat_imp.head(10).to_string(index=False))
 
-# 9. Salvare model
+# COMMAND ----------
+
+# 9. Salvare model pe volum pentru reutilizare
 model_path = "/Volumes/catalog_licenta/default/volum_licenta/rf_depression_model"
 model.save(model_path)
-print(f"\n✅ Model salvat la: {model_path}")
+print(f"Model salvat la: {model_path}")
 
 # COMMAND ----------
 

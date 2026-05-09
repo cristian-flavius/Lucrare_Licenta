@@ -1,39 +1,68 @@
 # Databricks notebook source
-# ============================================================
-# Corectii Silver Layer — adulti + Depression_Score valid
-# ============================================================
+# ==============================================================================
+# SILVER LAYER — Selectie, curatare si calcul scor depresie PHQ-9
+# ==============================================================================
+# Input:  catalog_licenta.default.bronze_nhanes (date brute NHANES 2017-2018)
+# Output: catalog_licenta.default.silver_nhanes (date curatate, scor PHQ-9)
+#
+# Transformari aplicate:
+#   1. Selectia a 37 coloane relevante din cele ~197 disponibile
+#   2. Filtrarea adultilor (>=18 ani) — PHQ-9 este validat clinic doar pentru adulti
+#   3. Tratarea valorilor aberante PHQ-9 (codurile 7/9 din NHANES = refuz/nu stiu)
+#   4. Calculul scorului total Depression_Score (suma celor 8 itemi PHQ-9, rang 0-24)
+#   5. Eliminarea randurilor fara scor valid
+# ==============================================================================
 
 from pyspark.sql.functions import col, when
 
-df_silver = spark.table("catalog_licenta.default.bronze_nhanes")
+# COMMAND ----------
 
-# Selectam coloanele relevante
+df = spark.table("catalog_licenta.default.bronze_nhanes")
+
+# 1. Selectam 37 coloane relevante grupate pe categorii
 cols_needed = [
+    # Sanatate mintala — cei 8 itemi PHQ-9 (0=deloc, 1=cateva zile, 2=>jumatate, 3=aproape zilnic)
     "FeelingDownDepressedOrHopeless", "HaveLittleInterestInDoingThings",
     "FeelingBadAboutYourself", "FeelingTiredOrHavingLittleEnergy",
     "MovingOrSpeakingSlowlyOrTooFast", "TroubleConcentratingOnThings",
     "TroubleSleepingOrSleepingTooMuch", "PoorAppetiteOrOvereating",
+    # Sanatate mintala — alte variabile (nu intra in scorul PHQ-9)
     "HowOftenDoYouFeelDepressed", "HowOftenDoYouFeelWorriedOrAnxious",
     "TakeMedicationForDepression", "TakeMedicationForTheseFeelings",
     "EverToldDoctorHadTroubleSleeping", "HowOftenFeelOverlySleepyDuringDay",
+    # Demografice
     "AgeInYearsAtScreening", "Gender", "RacehispanicOrigin",
     "MaritalStatus", "EducationLevelAdults20", "AnnualHouseholdIncome",
+    # Activitate fizica
     "MinutesSedentaryActivity", "VigorousRecreationalActivities",
     "ModerateRecreationalActivities", "WalkOrBicycle",
-    "HaveSeriousDifficultyWalking", "SleepHoursWeekdaysOrWorkdays",
-    "HowOftenDoYouSnore", "DietaryFiberGm_DR1TOT", "EnergyKcal_DR1TOT",
-    "AlcoholGm_DR1TOT", "SmokedAtLeast100CigarettesInLife",
+    "HaveSeriousDifficultyWalking",
+    # Somn
+    "SleepHoursWeekdaysOrWorkdays", "HowOftenDoYouSnore",
+    # Dieta
+    "DietaryFiberGm_DR1TOT", "EnergyKcal_DR1TOT", "AlcoholGm_DR1TOT",
+    # Fumat
+    "SmokedAtLeast100CigarettesInLife",
+    # Antropometrice
     "WeightKg", "WaistCircumferenceCm", "TrunkFatG",
+    # Clinice (biomarkeri)
     "Glycohemoglobin", "TotalCholesterolMgdl", "SystolicBloodPres1StRdgMmHg"
 ]
 
-df_silver = df_silver.select(cols_needed)
+df = df.select(cols_needed)
+print(f"Coloane selectate: {len(df.columns)}")
 
-# Eliminam minorii
-df_silver = df_silver.filter(col("AgeInYearsAtScreening") >= 18)
-print(f"După filtrare adulți (>=18): {df_silver.count()} rânduri")
+# COMMAND ----------
 
-# Tratam valorile aberante PHQ-9 (7/9 = refuz/nu știu → 0)
+# 2. Filtrare adulti — PHQ-9 este validat clinic doar pentru persoane >= 18 ani
+df = df.filter(col("AgeInYearsAtScreening") >= 18)
+print(f"Dupa filtrare adulti (>=18): {df.count()} randuri")
+
+# COMMAND ----------
+
+# 3. Tratare valori aberante PHQ-9
+# In NHANES, codurile 7 si 9 inseamna "refuz" si "nu stiu" — NU sunt raspunsuri valide.
+# Le inlocuim cu None (null) pentru a nu introduce erori in scor.
 phq9_cols = [
     "FeelingDownDepressedOrHopeless", "HaveLittleInterestInDoingThings",
     "FeelingBadAboutYourself", "FeelingTiredOrHavingLittleEnergy",
@@ -42,31 +71,28 @@ phq9_cols = [
 ]
 
 for c in phq9_cols:
-    df_silver = df_silver.withColumn(c,
-        when(col(c) > 3, None).otherwise(col(c)))
+    df = df.withColumn(c, when(col(c) > 3, None).otherwise(col(c)))
 
-# Calculam Depression_Score
-df_silver = df_silver.withColumn("Depression_Score",
-    sum([col(c) for c in phq9_cols]))
+# COMMAND ----------
 
-# Eliminam randurile cu Depression_Score null
-df_silver = df_silver.dropna(subset=["Depression_Score"])
-print(f"După eliminare score null: {df_silver.count()} rânduri")
+# 4. Calculul scorului total PHQ-9 (Depression_Score)
+# Suma celor 8 itemi: rang posibil 0-24 (8 itemi x max 3 puncte)
+# Daca oricare item este null, suma devine null — randurile respective se elimina
+df = df.withColumn("Depression_Score", sum([col(c) for c in phq9_cols]))
 
-# Drop target nulls PHQ-2
-df_silver = df_silver.dropna(subset=[
-    "FeelingDownDepressedOrHopeless",
-    "HaveLittleInterestInDoingThings"
-])
-print(f"După drop target nulls: {df_silver.count()} rânduri")
+# 5. Eliminare randuri fara scor valid
+df = df.dropna(subset=["Depression_Score"])
+print(f"Randuri cu scor PHQ-9 valid: {df.count()}")
 
-# Salvare
-df_silver.write \
+# COMMAND ----------
+
+# 6. Salvare ca Delta Table
+df.write \
     .format("delta") \
     .mode("overwrite") \
     .option("overwriteSchema", "true") \
-    .saveAsTable("catalog_licenta.default.silver_nhanes_cleaned")
+    .saveAsTable("catalog_licenta.default.silver_nhanes")
 
-print(f"✅ Silver Layer corectat salvat!")
-print(f"   Rânduri finale: {df_silver.count()}")
-print(f"   Coloane: {len(df_silver.columns)}")
+print(f"Silver Layer complet!")
+print(f"   Randuri finale: {df.count()}")
+print(f"   Coloane: {len(df.columns)}")
