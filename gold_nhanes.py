@@ -29,7 +29,7 @@ df = df.withColumn("Depression_Severity",
 
 # COMMAND ----------
 
-# 2. Distributia severitatatii
+# 2. Distributia severitatii
 print("=== Distributie severitate depresie ===")
 display(df.groupBy("Depression_Severity")
     .agg(count("*").alias("Total_Pacienti"))

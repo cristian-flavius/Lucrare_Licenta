@@ -1,6 +1,6 @@
 # Databricks notebook source
 # ==============================================================================
-# VIZUALIZĂRI — Grafice pentru capitolul de Rezultate al lucrării de licență
+# VIZUALIZĂRI — Grafice statistice bazate pe datele NHANES 2017-2018
 # ==============================================================================
 # Input:  catalog_licenta.default.gold_nhanes (date agregate)
 #
@@ -365,4 +365,4 @@ figuri_salvate = [f for f in os.listdir(FIG_DIR) if f.endswith(".png")]
 print(f"\n=== {len(figuri_salvate)} figuri salvate în {FIG_DIR} ===")
 for f in sorted(figuri_salvate):
     print(f"   {f}")
-print("\nFigurile pot fi descărcate și incluse direct în lucrarea de licență.")
+print("\nFigurile au fost salvate in format PNG.")

@@ -110,7 +110,7 @@ Notebook-urile se rulează **strict în această ordine**, fiecare depinzând de
 2. silver_nhanes.py     →  creează tabela: catalog_licenta.default.silver_nhanes
 3. gold_nhanes.py       →  creează tabela: catalog_licenta.default.gold_nhanes
 4. ml_nhanes.py         →  antrenează modelul și îl salvează pe volum
-5. visualizations.py    →  generează figurile (necesită modelul din pasul 4)
+5. visualizations.py    →  generează figurile (necesită tabela din pasul 3)
 ```
  
 ### Notă privind Spark MLlib
