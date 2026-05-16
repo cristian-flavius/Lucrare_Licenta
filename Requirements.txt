@@ -1,0 +1,22 @@
+# ==============================================================================
+# Dependențe Python — Predicția Riscului de Depresie (NHANES 2017-2018)
+# ==============================================================================
+# Notă: pyspark este preinstalat pe Databricks și nu necesită instalare manuală.
+# Pachetul 'nhanes' se instalează la rularea notebook-ului bronze_nhanes.py
+# prin comanda %pip install nhanes.
+# ==============================================================================
+ 
+# Ingestie date NHANES
+nhanes>=0.0.3
+ 
+# Procesare și analiză date
+pandas>=1.5.0
+numpy>=1.23.0
+ 
+# Machine Learning
+scikit-learn>=1.2.0
+joblib>=1.2.0
+ 
+# Vizualizare
+matplotlib>=3.6.0
+seaborn>=0.12.0
