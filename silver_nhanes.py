@@ -75,6 +75,26 @@ for c in phq9_cols:
 
 # COMMAND ----------
 
+# 3b. Tratare valori invalide pentru variabilele continue din chestionar
+# PAD680 (MinutesSedentaryActivity) foloseste codurile 7777="refuz" si
+# 9999="nu stiu". Cum o zi are maximum 1440 de minute, orice valoare peste
+# acest prag este imposibila fiziologic si reprezinta un cod-santinela
+# necurat. Le inlocuim cu None; vor fi imputate ulterior cu mediana in ml_nhanes.
+df = df.withColumn("MinutesSedentaryActivity",
+    when(col("MinutesSedentaryActivity") > 1440, None)
+    .otherwise(col("MinutesSedentaryActivity")))
+
+# Validare: confirmam ca nu mai exista valori imposibile dupa curatare
+from pyspark.sql.functions import max as _max, min as _min, count as _count
+stats = df.select(
+    _min("MinutesSedentaryActivity").alias("min"),
+    _max("MinutesSedentaryActivity").alias("max"),
+    _count(when(col("MinutesSedentaryActivity").isNull(), 1)).alias("nuluri")
+).collect()[0]
+print(f"Sedentarism dupa curatare — min: {stats['min']}, max: {stats['max']}, valori nule: {stats['nuluri']}")
+
+# COMMAND ----------
+
 # 4. Calculul scorului total PHQ-9 (Depression_Score)
 # Suma celor 8 itemi: rang posibil 0-24 (8 itemi x max 3 puncte)
 # Daca oricare item este null, suma devine null — randurile respective se elimina
