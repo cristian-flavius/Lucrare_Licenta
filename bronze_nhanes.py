@@ -11,6 +11,23 @@
 
 # COMMAND ----------
 
+# 0. Pregatirea infrastructurii de stocare (catalog, schema, volum)
+# Bronze este punctul de intrare al pipeline-ului, deci tot aici provizionam
+# mediul Unity Catalog de care depind straturile urmatoare:
+#   - catalog_licenta.default        — gazduieste tabelele Delta (bronze/silver/gold)
+#   - volum_licenta                  — gazduieste modelul ML si figurile generate
+#   - volum_licenta/figuri           — subdirectorul pentru vizualizari (PNG)
+spark.sql("CREATE CATALOG IF NOT EXISTS catalog_licenta")
+spark.sql("CREATE SCHEMA IF NOT EXISTS catalog_licenta.default")
+spark.sql("CREATE VOLUME IF NOT EXISTS catalog_licenta.default.volum_licenta")
+
+import os
+os.makedirs("/Volumes/catalog_licenta/default/volum_licenta/figuri", exist_ok=True)
+
+print("Infrastructura pregatita: catalog, schema, volum si subdirectorul figuri.")
+
+# COMMAND ----------
+
 from nhanes.load import load_NHANES_data
 
 # 1. Descarcare date NHANES 2017-2018
