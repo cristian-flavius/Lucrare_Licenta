@@ -1,4 +1,4 @@
-# Predicția Riscului de Depresie folosind Date Clinice NHANES și Arhitectura Medallion pe Databricks
+# Sistem analitic de procesare a datelor și modelarea biomarkerilor. Studiu de caz privind detectarea riscului de depresie utilizând seturi de date epidemiologice
  
 **Lucrare de Licență**
  
@@ -8,8 +8,8 @@
 | **Facultatea** | Automatică și Calculatoare |
 | **Specializarea** | Informatică — Învățământ la Distanță |
 | **Sesiunea** | Iulie 2026 |
-| **Autor** | `[NUME PRENUME]` |
-| **Coordonator** | `[TITLU + NUME COORDONATOR]` |
+| **Autor** | Cristian-Flavius MATEICA |
+| **Coordonator** | Ș.l.dr.ing. Mihaela CRIȘAN-VIDA |
  
 ---
  
@@ -134,5 +134,5 @@ Proiectul folosește scikit-learn pentru componenta de Machine Learning deoarece
  
 - **Instrument utilizat:** Claude (Anthropic) — [claude.ai](https://claude.ai)
 - **Scop:** asistență în scrierea și revizuirea codului Python, structurarea pipeline-ului de date, generarea vizualizărilor și organizarea repository-ului
-- **Perioadă de utilizare:** martie – mai 2026
+- **Perioadă de utilizare:** martie – iunie 2026
 - **Analiză critică:** toate rezultatele generate au fost verificate, testate și adaptate manual. Deciziile metodologice (alegerea variabilelor, pragurile PHQ-9, strategia de excludere a data leakage) au fost fundamentate pe literatura de specialitate și validate prin rularea efectivă a pipeline-ului pe date reale.
