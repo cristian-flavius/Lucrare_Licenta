@@ -70,7 +70,7 @@ Eșantionul final cuprinde **5.070 de adulți** (≥ 18 ani), clasificați în 5
  
 | Fișier | Descriere |
 |---|---|
-| `bronze_nhanes.py` | Descarcă datele NHANES 2017-2018 de pe serverele CDC și le salvează ca Delta Table. |
+| `bronze_nhanes.py` | Încarcă datele NHANES 2017-2018 din pachetul Python `nhanes` (set pre-unificat în format TSV) și le salvează ca Delta Table. |
 | `silver_nhanes.py` | Selectează 37 de coloane relevante, filtrează adulții (≥ 18 ani), tratează valorile aberante din chestionarul PHQ-9 și calculează scorul total de depresie. |
 | `gold_nhanes.py` | Clasifică pacienții în 5 categorii de severitate conform pragurilor clinice PHQ-9 și generează agregări statistice. |
 | `ml_nhanes.py` | Codifică variabilele categorice, antrenează un clasificator Random Forest (scikit-learn), evaluează performanța și salvează modelul. |
@@ -124,7 +124,7 @@ Proiectul folosește scikit-learn pentru componenta de Machine Learning deoarece
 **NHANES** (National Health and Nutrition Examination Survey) este un studiu realizat de **CDC** (Centers for Disease Control and Prevention, SUA) care evaluează starea de sănătate și nutriție a populației americane prin interviuri și examinări fizice.
  
 - **Ciclu utilizat:** 2017-2018
-- **Acces:** datele sunt publice și descărcate programatic prin pachetul Python [`nhanes`](https://pypi.org/project/nhanes/)
+- **Acces:** datele sunt publice și sunt distribuite pre-unificate (TSV) prin pachetul Python [`nhanes`](https://pypi.org/project/nhanes/) (instalat cu `pip install nhanes`)
 - **Referință oficială:** [https://www.cdc.gov/nchs/nhanes/](https://www.cdc.gov/nchs/nhanes/)
 ---
  
